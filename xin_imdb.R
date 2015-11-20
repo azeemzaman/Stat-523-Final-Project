@@ -40,46 +40,46 @@ get_data = function(tt)
     title = html_nodes(x,".itemprop")[1] %>% html_text() 
   )
   
-  df$user_rating = html_nodes(x,".star-box-details") %>%
-                   html_text() %>%
-                   str_extract(pattern = "[0-9]\\.[0-9]") %>%
-                   as.numeric()
+  df$user_rating = tryCatch(html_nodes(x,".star-box-details") %>%
+    html_text() %>%
+    str_extract(pattern = "[0-9]\\.[0-9]") %>%
+    as.numeric(), error = function(x)  {return(NA)})
   
-  df$metascore = html_nodes(x, ".star-box-details") %>%
-                 html_text()%>%
-                 str_extract(pattern = "Metascore: .[0-9]{2}")%>%
-                 str_extract(pattern = "[0-9]{2}")%>%
-                 as.numeric()
+  df$metascore = tryCatch(html_nodes(x, ".star-box-details") %>%
+    html_text()%>%
+    str_extract(pattern = "Metascore: .[0-9]{2}")%>%
+    str_extract(pattern = "[0-9]{2}")%>%
+    as.numeric(), error = function(x)  {return(NA)})
   
-  info = html_nodes(x,".txt-block") %>% 
-         html_text() %>%
-         str_trim()
+  info = tryCatch(html_nodes(x,".txt-block") %>% 
+    html_text() %>%
+    str_trim(), error = function(x)  {return(NA)})
   
-  df$director = unlist(str_split(info[1], "\\n"))[2] %>%
-                str_replace(", ","")
+  df$director = tryCatch(unlist(str_split(info[1], "\\n"))[2] %>%
+    str_replace(", ",""), error = function(x)  {return(NA)})
   
-  actor = str_split(info[3], "\\n") %>%
-          unlist()
+  actor = tryCatch(str_split(info[3], "\\n") %>%
+    unlist(), error = function(x)  {return(NA)})
   
-  df$actor1 = str_replace(actor[2],", ","")
-  df$actor2 = str_replace(actor[3],", ","")
-  df$actor3 = str_replace(actor[4],"\\|","") %>% str_trim()
+  df$actor1 = tryCatch(str_replace(actor[2],", ",""), error = function(x)  {return(NA)})
+  df$actor2 = tryCatch(str_replace(actor[3],", ",""), error = function(x)  {return(NA)})
+  df$actor3 = tryCatch(str_replace(actor[4],"\\|","") %>% str_trim(), error = function(x)  {return(NA)})
   
-  df$country = html_nodes(d, "#titleDetails , .txt-block:nth-child(4)")[2]%>%
-               html_text()%>%
-               str_split("\\n")%>%
-               str_extract(pattern = "USA")
-   
-  df$budget = read_html(paste0("http://www.imdb.com/title/",tt,"business?ref_=tt_dt_bus")) %>%  
-              html_nodes("#tn15content") %>%
-              html_text() %>%
-              str_split("estimated") %>%
-              .[[1]] %>%
-              .[1] %>% 
-              str_split("\\$") %>% 
-              .[[1]] %>%
-              .[2] %>%
-              str_replace(" \\(","")
+  df$country = tryCatch(html_nodes(d, "#titleDetails , .txt-block:nth-child(4)")[2] %>%
+    html_text() %>%
+    str_split("\\n") %>%
+    str_extract(pattern = "USA"), error = function(x)  {return(NA)})
+  
+  df$budget = tryCatch(read_html(paste0("http://www.imdb.com/title/",tt,"business?ref_=tt_dt_bus")) %>%  
+    html_nodes("#tn15content") %>%
+    html_text() %>%
+    str_split("estimated") %>%
+    .[[1]] %>%
+    .[1] %>% 
+    str_split("\\$") %>% 
+    .[[1]] %>%
+    .[2] %>%
+    str_replace(" \\(",""), error = function(x)  {return(NA)})
   
   return(df)
 }
