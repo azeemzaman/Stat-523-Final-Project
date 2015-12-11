@@ -68,6 +68,7 @@ panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
 }
 pairs(anal.data[,-1], lower.panel = panel.smooth, upper.panel = panel.cor, diag.panel = panel.hist)
 # Closer inspection
+par(mfrow = c(2,2))
 hist(anal.data$`Domestic Gross`, main = "Histogram of Domestic Gross")
 hist(anal.data$Opening, main = "Histogram of Opening Weekend")
 hist(anal.data$`Total Theaters`, main = "Histogram of Total Theaters")
@@ -80,6 +81,7 @@ From the histograms, we observe strong right skewness of domestic gross box offi
  
 2.3 Interaction Effects 
 ```{r}
+par(mfrow = c(2,2))
 with(anal.data, {
   interaction.plot(act.dir, run, Opening)
   interaction.plot(country, run, Opening)
@@ -94,6 +96,7 @@ Interaction effects exist is all plots. We will fit the models with different in
 
 2.4 Box plot
 ```{r}
+par(mfrow = c(2,2))
 # var1 refers to "categorical variables"
 with(anal.data, {
    boxplot(Opening ~ country, xlab = "Country", ylab = "Opening weekend box office", main = "Box plot of country")
@@ -170,16 +173,14 @@ par(mfrow = c(2,2))
 open.lm <- lm(log(Opening) ~  scale(budget) + country+act.dir+scale(run) + month+ scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Total Theaters", "Title", "Domestic Gross")])
 plot(open.lm) # check residual plots 
 summary(open.lm) # check goodness of fit
-avPlots(open.lm) # added variable plots
-boxcox(open.lm)  
+  
 
 # dropping opening number of theaters
 # model fitting for response variable Domestic Gross Box Office
-domes.lm <- lm(log(`Domestic Gross`) ~ scale(budget) + month country+act.dir+scale(run) + scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Opening Theaters", "Title", "Opening")])
+domes.lm <- lm(log(`Domestic Gross`) ~ scale(budget) + month + country+act.dir+scale(run) + scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Opening Theaters", "Title", "Opening")])
 plot(domes.lm) # check residual plots 
 summary(domes.lm) # check goodness of fit
-avPlots(domes.lm) # added variable plots
-boxcox(domes.lm) 
+
 
 
 ```
