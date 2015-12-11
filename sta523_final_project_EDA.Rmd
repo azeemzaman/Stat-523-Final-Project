@@ -1,0 +1,189 @@
+---
+title: "STA523_FinalProject_EDA"
+author: "Hanyu Song"
+date: "9 December, 2015"
+output: html_document
+---
+
+
+```{r}
+load("~/Documents/STA 523 FINAL PROJECT PROPOSAL/Stat-523-Final-Project/Stat-523-Final-Project/Stat-523-Final-Project/popular_celebs.Rdata")
+top.celebs$males <- as.character(top.celebs$males)
+top.celebs$females <- as.character(top.celebs$females)
+save(top.celebs, file = "popular_celebs.Rdata")
+load("~/Documents/STA 523 FINAL PROJECT PROPOSAL/Stat-523-Final-Project/Stat-523-Final-Project/Stat-523-Final-Project/clean_data.Rdata")
+anal.data <- clean.data
+anal.data <- anal.data[, !names(clean.data) %in% c("Titles", "director","actor1", "actor2", "actor3", "Open", "Close", "Rank", "Studio")]
+anal.data$act.dir <-  apply(clean.data[,names(clean.data) %in% c("actor1", "actor2", "actor3", "director")], 
+                             1, function(x) ifelse(any(x %in% c(top.celebs$females, top.celebs$males)), 1, 0))
+anal.data$country <- ifelse(clean.data$country == "USA", 1, 0)
+# Opening & Domestic Gross are response variables 
+save(anal.data, file = "anal_data.Rdata")
+
+```
+
+1. Normality checking
+
+```{r}
+# qq plot of original log-odds ratio
+par(mfrow = c(2,2))
+qqnorm(anal.data$Opening, main = "QQ Plot of opening weekend box office")
+qqline(anal.data$Opening)
+hist(anal.data$Opening, main = "Opening weekend box office")
+
+qqnorm(anal.data$'Domestic Gross', main = "QQ plot of domestic gross box office")
+qqline(anal.data$'Domestic Gross' )
+hist(anal.data$`Domestic Gross`,main = "Domestic Gross box office")
+
+```
+Strong right skewness is observed in the both QQ plot and histogram of Opening Weekend box office and Domestic Gross, suggesting a log transformation of response variable.
+
+2. Scatter plot Matrices & Histograms
+```{r}
+## put histograms on the diagonal
+panel.hist <- function(x, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(usr[1:2], 0, 1.5) )
+    h <- hist(x, plot = FALSE)
+    breaks <- h$breaks; nB <- length(breaks)
+    y <- h$counts; y <- y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+
+
+## put (absolute) correlations on the upper panels,
+## with size proportional to the correlations.
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+pairs(anal.data[,-1], lower.panel = panel.smooth, upper.panel = panel.cor, diag.panel = panel.hist)
+# Closer inspection
+hist(anal.data$`Domestic Gross`, main = "Histogram of Domestic Gross")
+hist(anal.data$Opening, main = "Histogram of Opening Weekend")
+hist(anal.data$`Total Theaters`, main = "Histogram of Total Theaters")
+hist(anal.data$`Opening Theaters`, main = "Histogram of Opening Theaters")
+hist(anal.data$run, main = "Total running months")
+```
+From the Scatter plot matrices, we observed a strong correlation (0.9) between Opening Weekend and Domestic Gross Box Office. This implies Opening Weekend Box Office is a strong indicator of Domestic Gross. Total and opening number of theaters are high correlated with correlation 0.95. We drop one when fitting the models.When fitting models for response Opening Weekend Box Office (resp. Domestic Gross Box Office), we pick variable opening number of theaters (resp. Total number of theathers). User rating and meta score (by critics) has correlation 0.62, indicating a possibility of dropping one when fitting the models. Overall speaking, both Opening Weekend and domestic gross Box office are highly correlated with opening number of theaters, total number of theathers and budget. 
+
+From the histograms, we observe strong right skewness of domestic gross box office, opening weekend box office, total number of theaters, opening number of theaters and budgets. A log transformation will be considered for response gross box office, opening weekend box office and budget. In the histogram of opening number of theaters, we see a huge spike close to zero and a symmetrically distributed cluster falling between 2000 and 4000. Similar pattern is also observed in that of total number of theaters. Therefore, there may be two clusters in the number of theaters, with one concentrated between 0 and 500, and the other symmetrically distributed between 2000 and 4000. The histogram of total running days also shows right skewness, with 90% of movies running for less than 150 days. 
+ 
+2.3 Interaction Effects 
+```{r}
+with(anal.data, {
+  interaction.plot(act.dir, run, Opening)
+  interaction.plot(country, run, Opening)
+  interaction.plot(country, act.dir, Opening)
+  interaction.plot(country, user_rating, Opening)
+  interaction.plot(country, metascore, Opening)
+  interaction.plot(country, budget, Opening)
+  interaction.plot(act.dir, budget, Opening)
+  })
+```
+Interaction effects exist is all plots. We will fit the models with different interactions.
+
+2.4 Box plot
+```{r}
+# var1 refers to "categorical variables"
+with(anal.data, {
+   boxplot(Opening ~ country, xlab = "Country", ylab = "Opening weekend box office", main = "Box plot of country")
+  legend("topleft", c("0: International", "1: USA"))
+  boxplot(Opening ~ month, xlab = "Month", ylab = "Opening weekend box office",
+  main = "Box plot of month")
+  boxplot(Opening ~ act.dir, xlab = "popular actor/actress/director", ylab = "Opening weekend box office", main = "Box plot of popular celebrities")
+  legend("topleft", c("0: no" , "1: yes"))
+})
+
+```
+Box plots of country, month, popular celebrity indicator are demonstrated above. Domestic movies and international movies exhibit significant difference in opening weekend box office. In comparison, international movies have much lower opening weekend box office with little variability. The box plot of month shows that moview released in May (month 05) and June (month 06) have much greater variability in opening weekend box office. Movies released in September and December tend to receive lower opening weekend box office with little variability. Given the pattern, we can group variable month to fewer levels. e.g. Group 1: May, June, November; Group 2: December, September; Group 3: The remaining months. In the box plot of popular celebrities, we notice much higher opening weekend box office in movies with top 250 actors/actresses/directors as listed on imdb.com. Greater variability is also observed.
+4 
+4.1. Linear Models on the original scales (added variable plots, Box-cox transformations,residual plots)
+
+```{r}
+library(MASS) # for box cox transformation
+library(car)  # for added variable plots
+# model fitting for response variable Opening Weekend Box Office
+# drop total number of theaters
+par(mfrow = c(2,2))
+
+open.lm <- lm(Opening ~  scale(budget) + country+act.dir+scale(run) + scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Total Theaters", "Title", "Domestic Gross")])
+plot(open.lm) # check residual plots 
+summary(open.lm) # check goodness of fit
+avPlots(open.lm) # added variable plots
+boxcox(open.lm)  
+
+# dropping opening number of theaters
+# model fitting for response variable Domestic Gross Box Office
+domes.lm <- lm(`Domestic Gross` ~ scale(budget) + country+act.dir+scale(run) + scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Opening Theaters", "Title", "Opening")])
+plot(domes.lm) # check residual plots 
+summary(domes.lm) # check goodness of fit
+avPlots(domes.lm) # added variable plots
+boxcox(domes.lm) 
+
+```
+Covariates excluding total number of theaters (resp. opening number of theaters) are fitted in the linear models of opening weekend box office (resp. domestic gross). Only budgets, number of theaters, meta score, month 05 (May) are significant in both models. This may be due to the different scales of explanatory variables. Budgets tend to dominate in the data variability given its large scales. On the other hand, both qq plots shows heavier tails than normal distribution. In the residual plot of opening weekend model, observations 211, 40 and 61 are identified as outliers, whereas in the residual plot of domestic gross model, observations 11, 211 and 81 are identified as outliers. Heteroscedasticity is observed with residual variance increasing with fitted values in both residual plots. Both box cox plots suggest a box cox transformation with $\lambda$ slightly greater than 0. We perform a log-transformation ($\lambda = 0$) for ease of interpretation. 
+
+4.2. Linear Models with scaled quantitative variables 
+
+```{r}
+library(MASS) # for box cox transformation
+library(car)  # for added variable plots
+# model fitting for response variable Opening Weekend Box Office
+# drop total number of theaters
+par(mfrow = c(2,2))
+
+open.lm <- lm(Opening ~  scale(budget) + country+act.dir+scale(run) + month+ scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Total Theaters", "Title", "Domestic Gross")])
+plot(open.lm) # check residual plots 
+summary(open.lm) # check goodness of fit
+avPlots(open.lm) # added variable plots
+boxcox(open.lm)  
+
+# dropping opening number of theaters
+# model fitting for response variable Domestic Gross Box Office
+domes.lm <- lm(`Domestic Gross` ~ scale(budget) + country+act.dir+scale(run) +month+ scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Opening Theaters", "Title", "Opening")])
+plot(domes.lm) # check residual plots 
+summary(domes.lm) # check goodness of fit
+avPlots(domes.lm) # added variable plots
+boxcox(domes.lm) 
+
+```
+Only variables number of running months and budget are significant after standardizing covariates. Box cox plots still indicates a log-transformation of response variable for normality.
+
+4.3. Linear models with log transformation of response variable & variable standardization
+```{r}
+library(MASS) # for box cox transformation
+library(car)  # for added variable plots
+# model fitting for response variable Opening Weekend Box Office
+# drop total number of theaters
+par(mfrow = c(2,2))
+
+open.lm <- lm(log(Opening) ~  scale(budget) + country+act.dir+scale(run) + month+ scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Total Theaters", "Title", "Domestic Gross")])
+plot(open.lm) # check residual plots 
+summary(open.lm) # check goodness of fit
+avPlots(open.lm) # added variable plots
+boxcox(open.lm)  
+
+# dropping opening number of theaters
+# model fitting for response variable Domestic Gross Box Office
+domes.lm <- lm(log(`Domestic Gross`) ~ scale(budget) + month country+act.dir+scale(run) + scale(metascore) + scale(user_rating),data = anal.data[,!names(anal.data) %in% c("Opening Theaters", "Title", "Opening")])
+plot(domes.lm) # check residual plots 
+summary(domes.lm) # check goodness of fit
+avPlots(domes.lm) # added variable plots
+boxcox(domes.lm) 
+
+
+```
+
+After log transformation of variables of opening weekend (resp. domestic gross) box office, most variables are significant. However, residual variability is decreasing with fitted values. Normality assumption is satisfied as shown by QQ plot. Notice that variable month has more levels showing significance when we are modeling against domestic gross box office. We may remove or group variable month when fitting the model against opening weekend box office. 
+
+
+
+
