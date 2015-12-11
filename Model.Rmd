@@ -1,0 +1,167 @@
+---
+title: "Model Building"
+author: "Wenli Shi"
+date: "December 11, 2015"
+output: html_document
+---
+
+#1. Model Selection#
+
+```{r}
+
+library(BAS)
+library(ISLR)
+library(MASS)
+library(mgcv)
+library(splines)
+library(BMA)
+library(glmnet)
+
+setwd("~/.Trash/Stat-523-Final-Project 9.14.24 AM")
+load("anal_data.Rdata")
+Flim_names = anal.data$Title
+A_data = anal.data[,-c(1:3)]
+A_data$`Domestic Gross` = log(A_data$`Domestic Gross`)
+A_data$`Total Theaters` = log(A_data$`Total Theaters`)
+A_data$Opening = log(A_data$Opening)
+A_data$`Opening Theaters` = log(A_data$`Opening Theaters`)
+A_data$budget = log(A_data$budget)
+X_Domes = data.matrix(A_data[,-c(1,3:4)])
+Domes = as.matrix(A_data[,1])
+X_Open = data.matrix(A_data[,-c(1:3)])
+Open = as.matrix(A_data[,3])
+
+cor(X_Open)
+cor(X_Domes)
+
+lambda.MIN.Domes = cv.glmnet(X_Domes,Domes)$lambda.min
+Lasso.Domes = glmnet(X_Domes,Domes,lambda=lambda.MIN.Domes)
+coef(Lasso.Domes)
+
+lambda.MIN.Open = cv.glmnet(X_Open,Open)$lambda.min
+Lasso.Open = glmnet(X_Open,Open,lambda=lambda.MIN.Open)
+coef(Lasso.Open)
+
+A_data_C1 = A_data[A_data$country==1,]
+A_data_C1 = A_data_C1[,-7]
+X_Domes_C1 = data.matrix(A_data_C1[,-c(1,3:4)])
+Domes_C1 = as.matrix(A_data_C1[,1])
+X_Open_C1 = data.matrix(A_data_C1[,-c(1:3)])
+Open_C1 = as.matrix(A_data_C1[,3])
+
+BMS.Domes = MC3.REG(Domes_C1,X_Domes_C1,num.its=10000, outliers=TRUE)
+summary(BMS.Domes)
+BMS.Open = MC3.REG(Open_C1,X_Open_C1,num.its=10000, outliers=TRUE)
+summary(BMS.Open)
+
+
+```
+
+
+According to the histograms and boxplots from the EDA, we could find that there are some more transformation needed. Based on the data, we have searched various of movies so that their Box office (Opening Weekend Box Office and Domestic Gross Box Office) are right skewed. Thus, we considered the Box-Cox transformation in the EDA part. Also, we need to consider these parts for the predictors as well because clearly the total number of theaters and opening number of theaters are also right skewed. Thus, we consider use the log transformation for domestic gross box office, opening weekend box office, total number of theaters, opening number of theaters and budgets. Also, we want to take the correlation analysis at first to reduce the correlation of design matrix and reduce some variables. According to the correlation in the variables for the domestic gross box office and opening weekend box office, we could find that the relation between total number of theaters and budget as well as the relation between user rating and metascore are relatively high (larger than 0.5). Thus, we consider if we could use one of them to do the same fitting.
+
+Then, we tried Bayesian and Frequentist ways to do the model selection. By Frequentist way, we tried LASSO to do the model selection at first, the result showed that the month is not an important variable for this regression. Thus, we consider dropping month at first. Also, by Bayesian way, we used Bayesian model selection and selection the model with the highest posterior probability. Because the country is a binary variable and causes error for MC3.REG, we only take the movies in US to do this analysis, whose number is also large. By the result of Bayesian model selection, we could find that the opening number of theaters, budget and run are important for the opening weekend box office and the rest are not. Also, for the domestic gross box office, the total number of theaters and run matter a lot but the rest do not. Thus, based on these results, we could consider a model using the total number of theaters and run to fit the domestic gross box office and another model using the opening number of theaters, budget and run to fit the opening weekend box office.
+
+
+
+#2. Model Fitting#
+
+## Linear Model##
+
+```{r}
+
+data_Domes = A_data[,-c(3,4)]
+data_Open = A_data[,-c(1,2)]
+
+TrN = sample(1:237, 200, replace = FALSE)
+Train_Domes = data_Domes[TrN,]
+Train_Open = data_Open[TrN,]
+Test_Domes = data_Domes[-TrN,]
+Test_Open = data_Open[-TrN,]
+
+Domes.lm1 = lm(`Domestic Gross`~`Total Theaters`+run, data= Train_Domes)
+#coef(Domes.lm1)
+Domes.lm2 = lm(`Domestic Gross`~`Total Theaters`+run+metascore, data= Train_Domes)
+#coef(Domes.lm2)
+Domes.lm3 = lm(`Domestic Gross`~`Total Theaters`+run+budget+metascore, data= Train_Domes)
+#coef(Domes.lm3)
+Domes.lm4 = lm(`Domestic Gross`~`Total Theaters`+run+budget+metascore+user_rating, 
+               data= Train_Domes)
+#coef(Domes.lm4)
+anova(Domes.lm1,Domes.lm2,Domes.lm3,Domes.lm4)
+
+
+Open.lm1 = lm(Opening~`Opening Theaters`+run, data= Train_Open)
+#coef(Open.lm1)
+Open.lm2 = lm(Opening~`Opening Theaters`+run+metascore, data= Train_Open)
+#coef(Open.lm2)
+Open.lm3 = lm(Opening~`Opening Theaters`+run+budget+metascore, data= Train_Open)
+#coef(Open.lm3)
+Open.lm4 = lm(Opening~`Opening Theaters`+run+budget+metascore+user_rating, 
+               data= Train_Open)
+#coef(Open.lm4)
+anova(Open.lm1,Open.lm2,Open.lm3,Open.lm4)
+
+
+
+```
+
+First, we consider using cross validation and the MSE to rate our model. Thus, we divide our data into two groups randomly. And then we consider linear models for this fitting and add variables until it is not significant by ANOVA table. From the ANOVA table, we find that the fourth model including any other variables other than run, budget, metascore and total number of theaters will be not significant any more. Thus, we decide our first linear models as 
+\[Domestic Gross = \alpha + \beta_1 Total Theaters + \beta_2 run + \beta_3 budget +\beta_4 metascore\]
+\[Opening = \alpha + \beta_1 Opening Theaters + \beta_2 run + \beta_3 budget +\beta_4 metascore\]
+
+##Bayesian Model Averaging##
+
+```{r}
+
+Domes.bas = bas.lm(`Domestic Gross`~., data = Train_Domes)
+Open.bas = bas.lm(`Opening`~., data = Train_Open)
+par(mfrow=c(1,2))
+image(Domes.bas)
+image(Open.bas)
+
+```
+
+Then we consider fit a model using Bayesian Model Averaing and fit modeling including all the variables for the domestic gross box office and the opening weekend box office. Then from the above plot, we could get that the the run and number of theaters matter a lot for the total domestic gross box office as we talk before. And the opening number of theaters, budget and run are important for the opening weekend box office and the rest are not. Thus, we focused on these two models and use our testing group data to compute the MSE and decide a better model.
+
+```{r}
+
+Domes.Pbas = predict(Domes.bas, newdata = Test_Domes)
+Open.Pbas = predict(Open.bas, newdata = Test_Open)
+
+Domes.MSE.bas = sum((Domes.Pbas$Ybma - Test_Domes$`Domestic Gross`)^2)
+Open.MSE.bas = sum((Open.Pbas$Ybma - Test_Open$Opening)^2)
+
+Domes.Plm1 = predict(Domes.lm1, newdata = Test_Domes)
+Open.Plm1 = predict(Open.lm1, newdata = Test_Open)
+
+Domes.MSE.lm1 = sum((Domes.Plm1 - Test_Domes$`Domestic Gross`)^2)
+Open.MSE.lm1 = sum((Open.Plm1 - Test_Open$Opening)^2)
+
+Domes.Plm2 = predict(Domes.lm2, newdata = Test_Domes)
+Open.Plm2 = predict(Open.lm2, newdata = Test_Open)
+
+Domes.MSE.lm2 = sum((Domes.Plm2 - Test_Domes$`Domestic Gross`)^2)
+Open.MSE.lm2 = sum((Open.Plm2 - Test_Open$Opening)^2)
+
+Domes.Plm3 = predict(Domes.lm3, newdata = Test_Domes)
+Open.Plm3 = predict(Open.lm3, newdata = Test_Open)
+
+Domes.MSE.lm3 = sum((Domes.Plm3 - Test_Domes$`Domestic Gross`)^2)
+Open.MSE.lm3 = sum((Open.Plm3 - Test_Open$Opening)^2)
+
+
+Domes.Plm4 = predict(Domes.lm4, newdata = Test_Domes)
+Open.Plm4 = predict(Open.lm4, newdata = Test_Open)
+
+Domes.MSE.lm4 = sum((Domes.Plm4 - Test_Domes$`Domestic Gross`)^2)
+Open.MSE.lm4 = sum((Open.Plm4 - Test_Open$Opening)^2)
+
+```
+
+Based on these MSEs, we could find that the predict for the opening weekend box office is fairly larger than the domestic gross box office. Also, the reason is obvious because for the domestic gross box offic, we used data collected for a rather longer time and should provide us with a more stable data set and pattern. Also, because the little difference among the different models for the same response, we could use the specific model for the specific response. Thus, we could conclude to use the Bayes Model Averaging for the domestic gross box offic and use the linear model for the opening weekend box office.
+
+```{r}
+Domes.bas
+Open.lm3
+```
