@@ -4,14 +4,69 @@ author: "Hanyu Song"
 date: "9 December, 2015"
 output: html_document
 ---
+## Understanding Box Office Returns
 
+Predicting how much money a movie will make at the box office is hard.  If a movie studio could predict how much money a given film would make, there would be no box office "flops."  In this analysis we look at some common factors that could be used to understand domestic box office receipts.  
+
+## Data set
+
+Our data set is a combination of two data sources.  Information about the movies themselves was scraped from IMDB.  We gathered information on the actors and actresses, director, user rating, critic rating (from Metacritic, which has a slightly stricter definition of "critic" than Rotten Tomatos, another review agregator), and budget.  
+
+Information on the box office earnings of each film was gathered from Box Office Mojo.  The collected information included the rank of each movie in terms of domestic box office earnings, the total domestic earnings, the opening weekend earnings, the total number of theaters in which the movie was shown, the number of theaters in which the movie was shown during the opening weekend, the studio that released the movie, the date on which the film opened, and the date on which the film closed.
+
+We restricted our attention to movies released in 2014 for a few reasons.  One important reason is inflation.  Over a longer period of time we would have to take inflation into account, which, while possible, may be tricky.  Perhaps a more important factor is the economic climate in the country.  Movie tickets are expensive, and during a recession theater attendance drops.  The Great Recession that began in 2008 definetly affected the way audiences consumed movies.  We are more interested in factors that a movie studio could control (such as the budget or the director) than those over which they have no control (inflation and unemployment).  
+
+## Merging the data
+
+Merging these two data sets proved tricky.  The main problem is that movies do not have a unique identifier (like an ISBN number), which forced us to merge based on title.  String matching, however, is a fool's errand.  In order to facilitate the matching we first cleaned the titles by removing any punctuation and numbers.  This allowed us to match about 230 films, which was somewhat disapponting because we scraped 700 films from Box Office Mojo and over 1000 from IMDB.  
+
+One problem was unpredicable title variation.  For example, the full title of 2014's Best Picture winner is "Birdman or (the Unexpected Virtue of Ignorance)," which is how the title was presented on IMDB.  Box Office Mojo presented the title simply as "Birdman."  This is a very difficult situation because such occurances are completely unpredicable and unique to each film.  Another issue is the presence or absence of the word "the" before certain titles, which was not consistent between the two sources.  To solve this problem we used `agrep`, which performs approximate string matching.  After merging the two data sets using the above process we compared the remaining rows using `agrep` and manually examined the results (there were only about 50 matches).  This process allowed us to match a few more films (such as "Birdman [or (the Unexpected Virtue of Ignorance)]" and "[The] ABCs of Death"), brining the total to around 250 matches.  
+
+A bigger problem is the difference in the convention for dating a movie.  Box Office Mojo unequivocally uses year in which the movie opened in US theaters.  The dating on IMDB is less clear.  The date can be year in which production was completed or the year in which the film debuted at a festival.  The result is that the year given by IMDB and Box Office Mojo often differ, which prevents us from matching the data competely.
+
+## Budget
+
+One of the major factors a studio has control over is a movie's budget.  Budget is a very reasonable variable to include in a model predicting box office returns.  A studio will approve large budgets only for films that it expects to make a lot of money.  Even if a film flops, a large budget is a sign that the stuio expected it to make money.  
+
+Budget is also important because it can serve as a proxy for the marketing budget.  Marketing budgets, especially for blockbusters, can be as large as 50% of the production budget.  Without a good marketing campaign, audiences do not know that the movie is in theaters.  Marketing is critical and so studios spend a lot of money marketing their tentpoles.  Budget information is hard to find and marketing budgets are even harder.  
+
+Missing budget information is pandemic in our data.  One source of missing data is foreign films, which are for less likely to report their production budgets.  Another is small budget independent films made outside of the studio system.  The gorilla production style common to these films precludes the collection of accurate budget data.  Of the roughly 250 movies that we managed to merge, around 60% lacked information on the budget.  As we have just noted, however, these budgets are not missing at random.  It is likely that most of the missing budgets are relatively small.  As we did not want to drop this varialbe, we assgined a budget between the minimum budget and the first quartile.  Our belief is that once the budget falls beneath a certain threshold, it does not have a significant impact on the box office receipts.  A film with a large budget can have a sense of spectable that draws people to the theater (like "Avatar" or "Star Wars") or simply a large enough marketing budget to attract audiences.  A small budget film enjoys neither of these advantages, so once the budget drops below some threshold the affect of the budget on the domestic gross should effectively disappear.
+
+## Opening Weekend
+
+The amount of money a film makes during its opening weekend (the first 3 days it is in theaters) is considered by studios to be very important, as it is an indicator of how much the film will earn in total.  We will examine the relationship between the amount of money earned during the opening weekend and the total domestic gross.
+
+
+## Actors and Directors
+
+The actors and directors who participate in a movie can greatly impact how well a movie does.  Certain directors specialize in making blockbusters that make lots of money, such as Michael Bay or Zach Snyder.  Other directors have proven themselves capable of directing quality movies--Martin Scorsese or Steven Spielberg, for example--so general audiences will seek out their movies regardless of the marketing or reviews.  Still others have a cultish following that watch anything they put out (Wes Anderson or Edgar Wright fit such a model) and so these films can make money without a massive marketing budget because they have an existing audience.  
+
+The faces in front of the camera also matter.  Studios used to rely very heavily on "movie stars:" actors so popular and loved that audiences would watch any film in which they appeared.  Studios built entire franchises around the likes of Tom Cruise, Tom Hanks, and Brad Pitt.  Such a model has come under scrutiny recently in light of the lack of success of movies like "After Earth" (starring Will Smith) and "The Lone Ranger" (starring Johnny Depp).  Despite this recent shift, audiences still see the precesnse of certain actors or actresses as a mark of quality and we want to capture this in our model.
+
+The best way to capture the effect of a single actor or director on the earnings of a film would be to use indicator variables for every single actor and director of interest and include many films in which they appear (and do not appear).  This strategy will not work for us, as we have data for only one year.  Within a year, a given actor or director is unlikely appear in more than one movie, so it is impossible to determine a "movie star bonus" for each star using our data.  Instead, we collected the names of the 250 most popular males and females on IMDB and created a dummy variable indicating if anybody who worked on the film is among these most popular celebrities.  This is a coarser measure, but it can still be used to see if the actors or directors working on a project have any affect on the domestic box office.  
+
+## User and Critic Reviews
+
+We have scraped data on the user reviews from IMDB and the critic revies from Metacritic.  User reviews should be a good indicator of how the public at large feels about a film.  We expect that a movie that is highly rated by users of IMDB will have a healthy box office.  Of course, selection bias is a problem here.  The users of IMDB are not necessarily representative of the population at large.  Furthermore, people are more likely to rate or review a film to which they had a strong reaction (whether that reaction is positive or negative).  There is also the issue of stability of these reviews.  For example, those who will see the new "Star Wars" movie during the opening weekend are, again, not necessarily representative of the population at large.  These die-hard fans will have a more extreme opnion of the film, and may be more likely to rate it 1 (if it fails to fulfill they astronomical expecations) or 10 (simply because it is a "Star Wars" film).  This will cause the user rating of the film to be initially unstable.  As ratings from casual fans offering more naunced views accumulate, the rating should stabalize.  This initial instability can be extreme:  "The Interview" was the highest rated film on IMDB for a few days as Americans supported the film against the preceived imposition by North Korea.  We believe that by considering films released in 2014 we have allowed sufficient time for the user reviews to stabalize.  
+
+We also the Metacritic score, which is an average of various critic views on a scale from 0 to 100.  The influence of critics on box office results is hotly debated.  While it seems reasonable to conclude that blockbusters will do well regardless of the reviews, small prestige pictures may be strongly affected by critical reviews.  Both measures will be analyzed.
+
+## Studio and Relese Date
+
+The performance of a movie could also depend on the studio that releases the movie.  Certain studios focus on blockbusters, releasing expensive spectable movies that have the potential to make up to a billion dollars.  Other studios (notably the Weinstein company) focus on "prestige pictures", which are movies that are consider more "artistic" and tend to compete for awards.  The marketing strategies for the various studios therefore differ.  By controlling for the studio who released the film we can attempt to control indirectly for the missing marketing data. 
+
+We also have information on the date in which the movie premiered in theaters.  Studios pick release dates very strategically.  The traditional model calls for releasing blockbusters during the summer because school aged children will have more time to go to the cinema and this mdoel still dominates today.  
+
+Furthermore, there is a flurry of prestige films released in December every year, as Oscar rules require a film to play in a specified number of theaters for a week to be considered offically released and therefore eligible for awards. Many films that will be competing for Oscars will go into limited release (play only in a few theaters in New York and Los Angelos) on December 25 to be awards eligible.  This year David O. Russel's "Joy," Alejandro Gonzalez Inarritu's "The Revenant," and Quinten Tarantino's "The Hateful Eight" will all have a limited release before the end of the year.  The reasoning behind such a release strategy (despite the heaving competition from other films targeted at the same audience) is that the movie will be fresh in award voters mind.  Even a critically praised film like "Mad Max: Fury Road" (released earlier in the year) has been overshadowed by the anticipation for the end of year releases.  In contrast, February and March are a "dumping ground" for films in which studios have little confidence. 
+
+As release dates are strategically chosen by studios, it makes sense to include the month in which a movie was released as a potential covaraite in the model.  Since we have both the date in which a movie premiered in theaters and the last day on which it was shown we can calculate the length of the theatrical run--the number of days that the movie was in theaters.  Although studios do not determine this value in advance, it may be interesting to examine the relationship between the length of the theatrical run and the domestic gross.
 0. Data Preparation 
 ```{r}
-load("~/Documents/STA 523 FINAL PROJECT PROPOSAL/Stat-523-Final-Project/Stat-523-Final-Project/Stat-523-Final-Project/popular_celebs.Rdata")
+load("popular_celebs.Rdata")
 top.celebs$males <- as.character(top.celebs$males)
 top.celebs$females <- as.character(top.celebs$females)
 save(top.celebs, file = "popular_celebs.Rdata")
-load("~/Documents/STA 523 FINAL PROJECT PROPOSAL/Stat-523-Final-Project/Stat-523-Final-Project/Stat-523-Final-Project/clean_data.Rdata")
+load("clean_data.Rdata")
 anal.data <- clean.data
 anal.data <- anal.data[, !names(clean.data) %in% c("Titles", "director","actor1", "actor2", "actor3", "Open", "Close", "Rank", "Studio")]
 anal.data$act.dir <-  apply(clean.data[,names(clean.data) %in% c("actor1", "actor2", "actor3", "director")], 
@@ -21,6 +76,7 @@ anal.data$country <- ifelse(clean.data$country == "USA", 1, 0)
 save(anal.data, file = "anal_data.Rdata")
 
 ```
+
 In the prepared dataset, we have response variables: Opening, Domestic Gross and explanatory variables: Total Theaters, Opening Theaters, User Rating, Meta Score, Country, Budget, Month, Run and Popular Celebrity Indicator.    
 
 1. Explanatory Data Analysis
@@ -38,6 +94,7 @@ qqline(anal.data$'Domestic Gross' )
 hist(anal.data$`Domestic Gross`,main = "Domestic Gross box office")
 
 ```
+
 Strong right skewness is observed in the both QQ plot and histogram of Opening Weekend box office and Domestic Gross, suggesting a log transformation of response variable.
 
 2. Scatter plot Matrices & Histograms
@@ -75,6 +132,7 @@ hist(anal.data$`Total Theaters`, main = "Histogram of Total Theaters")
 hist(anal.data$`Opening Theaters`, main = "Histogram of Opening Theaters")
 hist(anal.data$run, main = "Total running months")
 ```
+
 From the Scatter plot matrices, we observed a strong correlation (0.9) between Opening Weekend and Domestic Gross Box Office. This implies Opening Weekend Box Office is a strong indicator of Domestic Gross. Total and opening number of theaters are high correlated with correlation 0.95. We drop one when fitting the models.When fitting models for response Opening Weekend Box Office (resp. Domestic Gross Box Office), we pick variable opening number of theaters (resp. Total number of theaters). User rating and meta score (by critics) has correlation 0.62, indicating a possibility of dropping one when fitting the models. Overall speaking, both Opening Weekend and domestic gross Box office are highly correlated with opening number of theaters, total number of theaters and budget. 
 
 From the histograms, we observe strong right skewness of domestic gross box office, opening weekend box office, total number of theaters, opening number of theaters and budgets. A log transformation will be considered for response gross box office, opening weekend box office and budget. In the histogram of opening number of theaters, we see a huge spike close to zero and a symmetrically distributed cluster falling between 2000 and 4000. Similar pattern is also observed in that of total number of theaters. Therefore, there may be two clusters in the number of theaters, with one concentrated between 0 and 500, and the other symmetrically distributed between 2000 and 4000. The histogram of total running days also shows right skewness, with 90% of movies running for less than 150 days. 
@@ -92,6 +150,7 @@ with(anal.data, {
   interaction.plot(act.dir, budget, Opening)
   })
 ```
+
 Interaction effects exist is all plots. We will fit the models with different interactions.
 
 2.4 Box plot
@@ -108,6 +167,7 @@ with(anal.data, {
 })
 
 ```
+
 Box plots of country, month, popular celebrity indicator are demonstrated above. Domestic movies and international movies exhibit significant difference in opening weekend box office. In comparison, international movies have much lower opening weekend box office with little variability. The box plot of month shows that moview released in May (month 05) and June (month 06) have much greater variability in opening weekend box office. Movies released in September and December tend to receive lower opening weekend box office with little variability. Given the pattern, we can group variable month to fewer levels. e.g. Group 1: May, June, November; Group 2: December, September; Group 3: The remaining months. In the box plot of popular celebrities, we notice much higher opening weekend box office in movies with top 250 actors/actresses/directors as listed on imdb.com. Greater variability is also observed.
 4 
 4.1. Linear Models on the original scales (added variable plots, Box-cox transformations,residual plots)
@@ -134,6 +194,7 @@ avPlots(domes.lm) # added variable plots
 boxcox(domes.lm) 
 
 ```
+
 Covariates excluding total number of theaters (resp. opening number of theaters) are fitted in the linear models of opening weekend box office (resp. domestic gross). Only budgets, number of theaters, meta score, month 05 (May) are significant in both models. This may be due to the different scales of explanatory variables. Budgets tend to dominate in the data variability given its large scales. On the other hand, both qq plots shows heavier tails than normal distribution. In the residual plot of opening weekend model, observations 211, 40 and 61 are identified as outliers, whereas in the residual plot of domestic gross model, observations 11, 211 and 81 are identified as outliers. Heteroscedasticity is observed with residual variance increasing with fitted values in both residual plots. Both box cox plots suggest a box cox transformation with $\lambda$ slightly greater than 0. We perform a log-transformation ($\lambda = 0$) for ease of interpretation. 
 
 4.2. Linear Models with scaled quantitative variables 
@@ -160,6 +221,7 @@ avPlots(domes.lm) # added variable plots
 boxcox(domes.lm) 
 
 ```
+
 Only variables number of running months and budget are significant after standardizing covariates. Box cox plots still indicates a log-transformation of response variable for normality.
 
 4.3. Linear models with log transformation of response variable & variable standardization
