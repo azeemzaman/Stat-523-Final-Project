@@ -24,18 +24,18 @@ library(magrittr)
 library(stringr)
 
 # Directory for the html files
-dir.create("~/data/2014/", recursive=TRUE, showWarnings = FALSE)
+dir.create("data/2014/", recursive=TRUE, showWarnings = FALSE)
 
 # For loop for downloading all html files of movies
 num = seq(from=1,to=9009,by=50)
 for (i in num)
 {
   download.file(paste0("http://www.imdb.com/search/title?sort=moviemeter,asc&start=",i,"&title_type=feature&year=2014,2014"),
-  destfile=paste0("~/data/2014/",i,".html"))
+  destfile=paste0("data/2014/",i,".html"))
 }
 
 # Create a list of files
-files = dir("~/data/2014/", pattern="*.html", full.names=TRUE) 
+files = dir("data/2014/", pattern="*.html", full.names=TRUE) 
 ```
 We noticed that for each movie, its url contains a common string following with a 7 digit number. For example, for the movie "Interstella", its url is:"http://www.imdb.com/title/tt0816692/". If we could somehow get this specific string we would be able to extract the contents in the webpage by using the `read_html` function in combination with the `selectorgadget` tool and a series of string manipulations. Actually we could get the information from the 50 pages we stored previously. 
 ```{r, echo = FALSE}
