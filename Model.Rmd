@@ -4,6 +4,92 @@ author: "Wenli Shi"
 date: "December 11, 2015"
 output: html_document
 ---
+# 0. Scrapping IMDB data
+For this specific project, we would like to merge the information on imdb.com and boxoffice.com for the 2014 movies. First we need to extract the specific url for each movie. The difficulty of this task is that the movies released in 2014 was listed in 50 pages, with each page around 180 records, so the very first thing to do was to download the contents on each of the 50 pages, which is what the following codes did: 
+```{r, echo = FALSE}
+# For loop for downloading all html files of movies
+num = seq(from=1,to=9009,by=50)
+for (i in num)
+{
+  download.file(paste0("http://www.imdb.com/search/title?sort=moviemeter,asc&start=",i,"&title_type=feature&year=2014,2014"),
+  destfile=paste0("C:/2015Fall/523/final project/data/2014/listings",i,".html"))
+}
+```
+We noticed that for each movie, its url contains a common string following with a 7 digit number. For example, for the movie "Interstella", its url is:"http://www.imdb.com/title/tt0816692/". If we could somehow get this specific string we would be able to extract the contents in the webpage by using the `read_html` function in combination with the `selectorgadget` tool and a series of string manipulations. Actually we could get the information from the 50 pages we stored previously. 
+```{r, echo = FALSE}
+nodeset = NULL
+for (file in files)
+{
+  # Extract the partial links to all movies
+  nodes =  read_html(file) %>%
+           html_nodes(".title") %>%
+           as.character() %>%
+           str_match("tt[0-9]{7}") 
+  nodeset = rbind(nodeset,nodes)
+}
+```
+The object `nodeset` contains the specific string "ttxxxxxxx" for all the 9000 movies. Once we have that, we could paste them with the common url that each movie shares, "http://www.imdb.com/title/" together to get the url for each movie. After doing so, we could simply use `read_html` function to each url, and select what we need from the webpage of the movie. The information we get includes the title of the movie, user rating, metascore, directors, actors, the country it was made, and its budget. We then collect them together to a data frame structure. If a webpage does not provide such information, we assigned its value to missing. Acturally we have functionalized this process so that it could be applied to the url of each of the 9000 movies.
+```{r, echo = FALSE}
+# get the url of each movie
+url = paste0("http://www.imdb.com/title/",nodeset)
+
+get_data = function(tt)
+{
+  d = read_html(paste0("http://www.imdb.com/title/",tt))
+  
+  titles = html_nodes(d, "#overview-top")
+  x=titles[[1]]
+  
+  df = data.frame(
+    title = html_nodes(x,".itemprop")[1] %>% html_text() 
+  )
+  
+  df$user_rating = tryCatch(html_nodes(x,".star-box-details") %>%
+    html_text() %>%
+    str_extract(pattern = "[0-9]\\.[0-9]") %>%
+    as.numeric(), error = function(x)  {return(NA)})
+  
+  df$metascore = tryCatch(html_nodes(x, ".star-box-details") %>%
+    html_text()%>%
+    str_extract(pattern = "Metascore: .[0-9]{2}")%>%
+    str_extract(pattern = "[0-9]{2}")%>%
+    as.numeric(), error = function(x)  {return(NA)})
+  
+  info = tryCatch(html_nodes(x,".txt-block") %>% 
+    html_text() %>%
+    str_trim(), error = function(x)  {return(NA)})
+  
+  df$director = tryCatch(unlist(str_split(info[1], "\\n"))[2] %>%
+    str_replace(", ",""), error = function(x)  {return(NA)})
+  
+  actor = tryCatch(str_split(info[3], "\\n") %>%
+    unlist(), error = function(x)  {return(NA)})
+  
+  df$actor1 = tryCatch(str_replace(actor[2],", ",""), error = function(x)  {return(NA)})
+  df$actor2 = tryCatch(str_replace(actor[3],", ",""), error = function(x)  {return(NA)})
+  df$actor3 = tryCatch(str_replace(actor[4],"\\|","") %>% str_trim(), error = function(x)  {return(NA)})
+  
+  df$country = tryCatch(html_nodes(d, "#titleDetails , .txt-block:nth-child(4)")[2] %>%
+    html_text() %>%
+    str_split("\\n") %>%
+    str_extract(pattern = "USA"), error = function(x)  {return(NA)})
+  
+  df$budget = tryCatch(read_html(paste0("http://www.imdb.com/title/",tt,"business?ref_=tt_dt_bus")) %>%  
+    html_nodes("#tn15content") %>%
+    html_text() %>%
+    str_split("estimated") %>%
+    .[[1]] %>%
+    .[1] %>% 
+    str_split("\\$") %>% 
+    .[[1]] %>%
+    .[2] %>%
+    str_replace(" \\(",""), error = function(x)  {return(NA)})
+  
+  return(df)
+}
+```
+After we had the `get_value` function, we used `lapply` function to the `nodeset` object and as a result we get a data frame, with each row containig the information of a movie. 
+
 
 #1. Model Selection#
 
