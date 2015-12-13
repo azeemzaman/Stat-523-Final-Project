@@ -3,6 +3,7 @@ title: "STA523_FinalProject_EDA"
 author: "Hanyu Song"
 date: "9 December, 2015"
 output: html_document
+runtime: shiny
 ---
 ## Understanding Box Office Returns
 
@@ -364,4 +365,67 @@ To summarise,
 6.In the box plot of popular celebrities, we notice much higher opening weekend box office in movies with top 250 actors/actresses/directors as listed on imdb.com. Greater variability is also observed.
 
 7. Various interactions exist in the model. We will do trial and errors in the linear models. 
+
+###Shiny App
+```{r}
+if(!("dplyr" %in% installed.packages())) {
+  install.packages("dplyr", repos = "http://cran.us.r-project.org")
+}
+library("dplyr")
+if(!("shiny" %in% installed.packages())) {
+  install.packages("shiny", repos = "http://cran.us.r-project.org")
+}
+library("shiny")
+if(!("ggplot2" %in% installed.packages())) {
+  install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+}
+library("ggplot2")
+load("clean_data.Rdata")
+name = c("Rank","Total Theaters","Opening","Opening Theaters","user_rating","metascore","budget","month","run")
+names(clean.data)[5] = "DomesticGross"
+names(clean.data)[6] = "TotalTheaters"
+names(clean.data)[8] = "OpeningTheaters"
+```
+
+```{r, echo = FALSE}
+shinyApp(
+  ui = fluidPage(
+    titlePanel(
+      "Movie Box Office"
+    ),
+    sidebarPanel(
+      selectInput("variable", label = "Select Variable",
+                  choices = name)
+    ),
+    mainPanel(
+    h4("Scatter plot:"),
+    plotOutput("scatter")
+    )
+  ),
+  server = function(input, output){
+    output$scatter = renderPlot(
+      if(input$variable == "Rank"){
+        ggplot(data = clean.data)+ geom_point(aes(x = Rank, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between rank and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "Total Theaters"){
+        ggplot(data = clean.data)+ geom_point(aes(x = TotalTheaters, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between total theaters and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "Opening"){
+        ggplot(data = clean.data)+ geom_point(aes(x = Opening, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between opening and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "Opening Theaters"){
+        ggplot(data = clean.data)+ geom_point(aes(x = OpeningTheaters, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between opening theaters and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "user_rating"){
+        ggplot(data = clean.data)+ geom_point(aes(x = user_rating, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between user rating and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "metascore"){
+        ggplot(data = clean.data)+ geom_point(aes(x = metascore, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between metascore and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "budget"){
+        ggplot(data = clean.data)+ geom_point(aes(x = budget, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between budget and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "month"){
+        ggplot(data = clean.data)+ geom_point(aes(x = month, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between month and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }else if(input$variable == "run"){
+        ggplot(data = clean.data)+ geom_point(aes(x = run, y = DomesticGross))+theme(axis.title=element_text(size=14,face = "bold"))+labs(title = "Relationship between theatrical run and domestic gross")+theme(plot.title =  element_text(size = 18),axis.text.x = element_text(size = 12),axis.text.y = element_text(size = 14))
+      }
+    )
+  },
+  option = list(height = 500)
+)
+```
 
