@@ -18,7 +18,7 @@ We restricted our attention to movies released in 2014 for a few reasons.  One i
 
 ## Scrapping IMDB data
 For this specific project, we would like to merge the information on imdb.com and boxoffice.com for the 2014 movies. First we need to extract the specific url for each movie. The difficulty of this task is that the movies released in 2014 was listed in 50 pages, with each page around 180 records, so the very first thing to do was to download the contents on each of the 50 pages, which is what the following codes did: 
-```{r, echo = FALSE}
+```{r, eval = FALSE}
 library(rvest)
 library(magrittr)
 library(stringr)
@@ -38,7 +38,7 @@ for (i in num)
 files = dir("data/2014/", pattern="*.html", full.names=TRUE) 
 ```
 We noticed that for each movie, its url contains a common string following with a 7 digit number. For example, for the movie "Interstella", its url is:"http://www.imdb.com/title/tt0816692/". If we could somehow get this specific string we would be able to extract the contents in the webpage by using the `read_html` function in combination with the `selectorgadget` tool and a series of string manipulations. Actually we could get the information from the 50 pages we stored previously. 
-```{r, echo = FALSE}
+```{r, eval = FALSE}
 nodeset = NULL
 for (file in files)
 {
@@ -51,7 +51,7 @@ for (file in files)
 }
 ```
 The object `nodeset` contains the specific string "ttxxxxxxx" for all the 9000 movies. Once we have that, we could paste them with the common url that each movie shares, "http://www.imdb.com/title/" together to get the url for each movie. After doing so, we could simply use `read_html` function to each url, and select what we need from the webpage of the movie. The information we get includes the title of the movie, user rating, metascore, directors, actors, the country it was made, and its budget. We then collect them together to a data frame structure. If a webpage does not provide such information, we assigned its value to missing. Acturally we have functionalized this process so that it could be applied to the url of each of the 9000 movies.
-```{r, echo = FALSE}
+```{r, eval = FALSE}
 # get the url of each movie
 url = paste0("http://www.imdb.com/title/",nodeset)
 
